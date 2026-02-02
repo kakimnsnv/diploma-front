@@ -1,0 +1,123 @@
+<template>
+  <UDashboardPanel>
+    <template #header>
+      <DashboardNavbar />
+    </template>
+
+    <template #body>
+      <div v-if="sttate === 'initial'" class="h-full flex items-end">
+        <UForm :schema="schema" :state="state" class="space-y-4 w-96" @submit.prevent="onSubmit" :loading="pending" :disabled="pending">
+          <UFormField name="image" :error="error?.data?.error">
+            <UFileUpload icon="i-lucide-image" label="Drop your image here" description="PNG or JPEG only" accept="image/png,.jpg,.jpeg" class="aspect-square min-h-48 max-h-2/5 w-full" highlight dropzone v-model="state.image" />
+            <UButton v-if="state.image" type="submit" label="Submit" block class="mt-2" />
+          </UFormField>
+
+        </UForm>
+      </div>
+
+      <div v-if="sttate === 'loading'">
+        <USkeleton class="h-48 w-full mb-8" />
+        <USkeleton class="h-48 w-full" />
+      </div>
+
+      <div v-if="sttate === 'completed'" class="space-y-4">
+        <NuxtImg :src="chat?.original_url" alt="Original" class="aspect-square min-h-48 max-h-2/5 w-full" />
+        <NuxtImg :src="chat?.result_image_url" alt="Result" class="aspect-square min-h-48 max-h-2/5 w-full" />
+        <UButton
+            block
+            to="/"
+            label="New chat"
+          />
+      </div>
+    </template>
+  </UDashboardPanel>
+</template>
+
+<script setup lang="ts">
+import type { FormSubmitEvent } from '@nuxt/ui'
+import z from 'zod'
+import type { Chat, UploadResponse } from '~/types/chat'
+
+const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2MB
+const DIMENSIONS = { width: 512, height: 512 }
+const ACCEPTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png']
+
+const schema = z.object({
+  image: z
+    .instanceof(File, {
+      message: 'Please select an image file.'
+    })
+    .refine((file) => file.size <= MAX_FILE_SIZE, {
+      message: `The image is too large. Please choose an image smaller than ${formatBytes(MAX_FILE_SIZE)}.`
+    })
+    .refine((file) => ACCEPTED_IMAGE_TYPES.includes(file.type), {
+      message: 'Please upload a valid image file (JPEG or PNG).'
+    })
+    .refine(
+      (file) =>
+        new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            const img = new Image()
+            img.onload = () => {
+              const meetsDimensions =
+                img.width == DIMENSIONS.width &&
+                img.height == DIMENSIONS.height
+              resolve(meetsDimensions)
+            }
+            img.src = e.target?.result as string
+          }
+          reader.readAsDataURL(file)
+        }),
+      {
+        message: `The image dimensions are invalid. Please upload an image ${DIMENSIONS.width}x${DIMENSIONS.height} pixels.`
+      }
+    )
+})
+
+type Schema = z.output<typeof schema>
+
+const state = reactive<Partial<Schema>>({
+  image: undefined
+})
+
+const formData = new FormData()
+const { data, pending, error, execute } = await useAPIFetch<UploadResponse>("/upload", {
+  method: "POST",
+  body: formData,
+})
+
+
+const sttate = ref("initial")
+const chat = ref<Chat | undefined>(undefined)
+
+async function onSubmit(event: FormSubmitEvent<Schema>) {
+  sttate.value = "loading"
+  formData.append('image', event.data.image)
+
+  await execute()
+
+  if (!error.value) {
+    if (data.value) {
+      const { data: resultData, error: resultError, refresh } = await useAPIFetch<Chat>(`/results/${data.value.job_id}`, {
+        method: "GET",
+        immediate: true,
+      })
+      let attempts = 0
+      const MAX_ATTEMPTS = 60
+      while (resultData.value?.status !== 'completed' && attempts < MAX_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        await refresh()
+        if (resultError.value || resultData.value?.status === 'failed') break
+        attempts++
+      }
+      chat.value = resultData.value
+      sttate.value = "completed"
+    }
+  }else{
+    sttate.value = "error"
+  }
+}
+
+
+</script>
