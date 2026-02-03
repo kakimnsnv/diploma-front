@@ -19,16 +19,6 @@
         <USkeleton class="h-48 w-full mb-8" />
         <USkeleton class="h-48 w-full" />
       </div>
-
-      <div v-if="sttate === 'completed'" class="space-y-4">
-        <NuxtImg :src="chat?.original_url" alt="Original" class="aspect-square min-h-48 max-h-2/5 w-full" />
-        <NuxtImg :src="chat?.result_image_url" alt="Result" class="aspect-square min-h-48 max-h-2/5 w-full" />
-        <UButton
-            block
-            to="/"
-            label="New chat"
-          />
-      </div>
     </template>
   </UDashboardPanel>
 </template>
@@ -113,6 +103,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       }
       chat.value = resultData.value
       sttate.value = "completed"
+      navigateTo(`/${data.value.job_id}`)
     }
   }else{
     sttate.value = "error"

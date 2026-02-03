@@ -3,7 +3,7 @@ export type Chat = {
     status: string
     to: string
     icon: string
-    original_url: string
+    original_image_url: string
     result_image_url: string
     updatedAt: string
     createdAt: string

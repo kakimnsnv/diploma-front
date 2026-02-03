@@ -3,21 +3,25 @@ import type { Chat } from '~/types/chat'
 
 const {isLoggedIn} = useAuth()
 
+const {ago} = useDate()
+
 const open = ref(false)
 
-const { data: chats, refresh: refreshChats } = await useAPIFetch<Chat[]>('/history', {
+const { data: chats, refresh: refreshChats, execute } = await useAPIFetch<Chat[]>('/history', {
   key: 'history',
-  transform: data => data.map(chat => ({
-    id: chat.id,
-    status: chat.status,
-    to: `/chat/${chat.id}`,
+  immediate: true,
+  transform: chats => chats.map(chat => ({
+    to: `/${chat.id}`,
     icon: 'i-lucide-message-circle',
-    original_image_url: chat.original_image_url,
-    result_image_url: chat.result_image_url,
-    updatedAt: chat.updatedAt,
-    createdAt: chat.createdAt
+    label: `${chat.id}: ${ago(chat.created_at)}`,
+    avatar: {
+      src: chat.original_image_url,
+      alt: chat.original_image_url
+    },
   }))
 })
+
+execute()
 
 watch(isLoggedIn, () => {
   refreshChats()
@@ -64,6 +68,8 @@ watch(isLoggedIn, () => {
 
         <UNavigationMenu
           v-if="!collapsed"
+          color="primary"
+          variant="pill"
           :items="chats"
           :collapsed="collapsed"
           orientation="vertical"

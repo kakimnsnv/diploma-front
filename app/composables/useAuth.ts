@@ -1,6 +1,8 @@
 import type { User } from "~/types/user"
 
 export const useAuth = () => {
+  const route = useRoute()
+
   const {error: logoutError, execute: logoutExecute} = useAPIFetch("/logout", {
       method: "POST"
     })
@@ -13,7 +15,11 @@ export const useAuth = () => {
   
   watch(isLoggedIn, (value) => {
     if (value) {
-      navigateTo('/')
+      if(route.query.redirect) {
+        navigateTo(route.query.redirect as string)
+      } else {
+        navigateTo('/')
+      }
     } else {
       navigateTo('/login')
     }
