@@ -12,13 +12,14 @@
 				<UForm
 					:schema="schema"
 					:state="state"
-					class="space-y-4 w-96"
+					class="space-y-4 w-full h-full"
 					:loading="pending"
 					:disabled="pending"
 					@submit.prevent="onSubmit"
 				>
 					<UFormField
 						name="image"
+						class="h-full"
 						:error="error?.data?.error"
 					>
 						<UFileUpload
@@ -27,7 +28,7 @@
 							label="Drop your image here"
 							description="PNG or JPEG only"
 							accept="image/png,.jpg,.jpeg"
-							class="aspect-square min-h-48 max-h-2/5 w-full"
+							class="h-[calc(100vh_-_8rem)]"
 							highlight
 							dropzone
 						/>

@@ -6,7 +6,7 @@
 
 		<template #body>
 			<div v-if="pending">
-				<USkeleton class="h-48 w-full mb-8" />
+				<!-- <USkeleton class="h-48 w-full mb-8" /> -->
 				<USkeleton class="h-48 w-full" />
 			</div>
 
@@ -15,7 +15,19 @@
 				class="space-y-4 h-full"
 			>
 				<div class="flex flex-col md:flex-row gap-4">
-					<NuxtImg
+					<!-- <ImageComparisonSlider
+					:before-image="chat?.original_image_url"
+  :after-image="chat?.result_image_url"
+  :show-labels="true"
+  :initial-position="50"
+/> -->
+<ImageComparison
+  :original-image="chat?.original_image_url"
+  :edited-image="chat?.result_image_url"
+  :show-label="true"
+  :show-instruction="true"
+/>
+					<!-- <NuxtImg
 						:src="chat?.original_image_url"
 						alt="Original"
 						class="aspect-square w-full md:w-1/2 mx-auto"
@@ -24,7 +36,7 @@
 						:src="chat?.result_image_url"
 						alt="Result"
 						class="aspect-square w-full md:w-1/2 mx-auto"
-					/>
+					/> -->
 				</div>
 				<UButton
 					block
