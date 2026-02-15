@@ -15,7 +15,8 @@
 					class="space-y-4 w-full h-full"
 					:loading="pending"
 					:disabled="pending"
-					@submit.prevent="onSubmit"
+					@submit="onSubmit"
+					@error="onError"
 				>
 					<UFormField
 						name="image"
@@ -23,7 +24,7 @@
 						:error="error?.data?.error"
 					>
 						<UFileUpload
-							v-model="state.image"
+							:model-value="state.image"
 							icon="i-lucide-image"
 							label="Drop your image here"
 							description="PNG or JPEG only"
@@ -31,6 +32,7 @@
 							class="h-[calc(100vh_-_8rem)]"
 							highlight
 							dropzone
+							@update:model-value="validateImage"
 						/>
 						<UButton
 							v-if="state.image"
@@ -58,6 +60,7 @@ import z from "zod";
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const DIMENSIONS = { width: 512, height: 512 };
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
+const toast = useToast();
 
 const schema = z.object({
 	image: z
@@ -71,21 +74,24 @@ const schema = z.object({
 			message: "Please upload a valid image file (JPEG or PNG).",
 		})
 		.refine(
-			file =>
-				new Promise((resolve) => {
+			async (file) => {
+				return new Promise((resolve, reject) => {
 					const reader = new FileReader();
+					reader.onerror = () => reject(false);
 					reader.onload = (e) => {
 						const img = new Image();
+						img.onerror = () => reject(false);
 						img.onload = () => {
 							const meetsDimensions
-								= img.width == DIMENSIONS.width
-									&& img.height == DIMENSIONS.height;
+								= img.width === DIMENSIONS.width
+									&& img.height === DIMENSIONS.height;
 							resolve(meetsDimensions);
 						};
 						img.src = e.target?.result as string;
 					};
 					reader.readAsDataURL(file);
-				}),
+				});
+			},
 			{
 				message: `The image dimensions are invalid. Please upload an image ${DIMENSIONS.width}x${DIMENSIONS.height} pixels.`,
 			},
@@ -105,7 +111,6 @@ const { data, pending, error, execute } = await useAPIFetch<UploadResponse>("/up
 });
 
 const sttate = ref("initial");
-const chat = ref<Chat | undefined>(undefined);
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
 	sttate.value = "loading";
@@ -128,19 +133,67 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 				attempts++;
 			}
 			if (resultError.value || resultData.value?.status === "failed") {
-				sttate.value = "error";
+				sttate.value = "initial";
+				toast.add({
+					title: "Error",
+					description: "Failed to process image. Please try again.",
+					icon: "i-lucide-circle-alert",
+					color: "error",
+				});
 				return;
 			}
-			chat.value = resultData.value;
-			sttate.value = "completed";
 
 			await refreshNuxtData("history");
 
-			navigateTo(`/${data.value.job_id}`);
+			await navigateTo(`/${data.value.job_id}`, { replace: true });
 		}
 	}
 	else {
-		sttate.value = "error";
+		sttate.value = "initial";
+		toast.add({
+			title: "Upload Error",
+			description: error.value?.data?.error || "Failed to upload image. Please try again.",
+			icon: "i-lucide-circle-alert",
+			color: "error",
+		});
+	}
+}
+
+async function onError(event: any) {
+	event.errors.forEach((err: any) => {
+		toast.add({
+			title: "Validation error:",
+			description: err.message,
+			icon: "i-lucide-circle-alert",
+			color: "error",
+		});
+	});
+}
+
+async function validateImage(files: FileList | File[] | File | null) {
+	if (!files) {
+		state.image = undefined;
+		return;
+	}
+
+	const file = Array.isArray(files) ? files[0] : files instanceof FileList ? files[0] : files;
+	if (!file) return;
+
+	try {
+		await schema.pick({ image: true }).parseAsync({ image: file });
+		state.image = file;
+	}
+	catch (err: any) {
+		const firstError = err.errors?.[0]?.message || "Ensure the image dimension is " + DIMENSIONS.width + "x" + DIMENSIONS.height;
+
+		toast.add({
+			title: "Validation error:",
+			description: firstError,
+			icon: "i-lucide-circle-alert",
+			color: "error",
+		});
+
+		state.image = undefined;
 	}
 }
 </script>

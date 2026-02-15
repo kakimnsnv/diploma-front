@@ -8,6 +8,6 @@ const _ = useAuth();
 			<NuxtPage />
 		</NuxtLayout>
 
-		<UNotifications />
+		<UToaster />
 	</UApp>
 </template>
