@@ -1,0 +1,64 @@
+name: Frontend Deploy (PM2 + Auto-Install)
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Nuxt project
+        run: npm run build
+
+      - name: Copy .output to VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: ".output/*"
+          target: "~/medical-frontend"
+
+      - name: Server Setup and Restart App
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            if ! command -v node &> /dev/null; then
+              echo "Node.js missing. Installing..."
+              curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+              sudo apt-get install -y nodejs
+            fi
+
+            if ! command -v pm2 &> /dev/null; then
+              echo "PM2 missing. Installing..."
+              sudo npm install -g pm2
+            fi
+
+            cd ~/medical-frontend
+            
+            if pm2 list | grep -q "medical-front"; then
+              echo "Restarting application..."
+              pm2 restart medical-front
+            else
+              echo "Starting application for the first time..."
+              pm2 start .output/server/index.mjs --name medical-front
+            fi
+
+            pm2 save
