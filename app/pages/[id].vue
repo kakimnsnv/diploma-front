@@ -5,8 +5,8 @@
 		</template>
 
 		<template #body>
-			<div v-if="pending && !chat">
-				<USkeleton class="h-48 w-full mb-8" />
+			<div v-if="pending">
+				<!-- <USkeleton class="h-48 w-full mb-8" /> -->
 				<USkeleton class="h-48 w-full" />
 			</div>
 

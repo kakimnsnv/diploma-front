@@ -54,48 +54,13 @@
 </template>
 
 <script setup lang="ts">
-import type { FormSubmitEvent } from "@nuxt/ui";
-import z from "zod";
-
-const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
-const DIMENSIONS = { width: 512, height: 512 };
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png"];
-const toast = useToast();
+import type { FormSubmitEvent } from '@nuxt/ui';
+import z from 'zod';
 
 const schema = z.object({
-	image: z
-		.instanceof(File, {
-			message: "Please select an image file.",
-		})
-		.refine(file => file.size <= MAX_FILE_SIZE, {
-			message: `The image is too large. Please choose an image smaller than ${formatBytes(MAX_FILE_SIZE)}.`,
-		})
-		.refine(file => ACCEPTED_IMAGE_TYPES.includes(file.type), {
-			message: "Please upload a valid image file (JPEG or PNG).",
-		})
-		.refine(
-			async (file) => {
-				return new Promise((resolve, reject) => {
-					const reader = new FileReader();
-					reader.onerror = () => reject(false);
-					reader.onload = (e) => {
-						const img = new Image();
-						img.onerror = () => reject(false);
-						img.onload = () => {
-							const meetsDimensions
-								= img.width === DIMENSIONS.width
-									&& img.height === DIMENSIONS.height;
-							resolve(meetsDimensions);
-						};
-						img.src = e.target?.result as string;
-					};
-					reader.readAsDataURL(file);
-				});
-			},
-			{
-				message: `The image dimensions are invalid. Please upload an image ${DIMENSIONS.width}x${DIMENSIONS.height} pixels.`,
-			},
-		),
+  image: z.instanceof(File, {
+    message: 'Please select a file.',
+  }),
 });
 
 type Schema = z.output<typeof schema>;
@@ -110,11 +75,12 @@ const { data, pending, error, execute } = await useAPIFetch<UploadResponse>("/up
 	body: formData,
 });
 
-const sttate = ref("initial");
+const sttate = ref('initial');
+const chat = ref<Chat | undefined>(undefined);
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-	sttate.value = "loading";
-	formData.append("image", event.data.image);
+  sttate.value = 'loading';
+  formData.append('image', event.data.image);
 
 	await execute();
 
@@ -133,15 +99,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 				attempts++;
 			}
 			if (resultError.value || resultData.value?.status === "failed") {
-				sttate.value = "initial";
-				toast.add({
-					title: "Error",
-					description: "Failed to process image. Please try again.",
-					icon: "i-lucide-circle-alert",
-					color: "error",
-				});
+				sttate.value = "error";
 				return;
 			}
+			chat.value = resultData.value;
+			sttate.value = "completed";
 
 			await refreshNuxtData("history");
 
