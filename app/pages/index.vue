@@ -24,15 +24,14 @@
 						:error="error?.data?.error"
 					>
 						<UFileUpload
-							:model-value="state.image"
-							icon="i-lucide-image"
-							label="Drop your image here"
-							description="PNG or JPEG only"
-							accept="image/png,.jpg,.jpeg"
+							v-model="state.image"
+							icon="i-lucide-file-chart-column"
+							label="Drop your file here"
+							description=".nii file only"
+							accept=".nii"
 							class="h-[calc(100vh_-_8rem)]"
 							highlight
 							dropzone
-							@update:model-value="validateImage"
 						/>
 						<UButton
 							v-if="state.image"
@@ -54,13 +53,14 @@
 </template>
 
 <script setup lang="ts">
-import type { FormSubmitEvent } from '@nuxt/ui';
-import z from 'zod';
+import type { FormSubmitEvent } from "@nuxt/ui";
+import z from "zod";
 
+const toast = useToast();
 const schema = z.object({
-  image: z.instanceof(File, {
-    message: 'Please select a file.',
-  }),
+	image: z.instanceof(File, {
+		message: "Please select a file.",
+	}),
 });
 
 type Schema = z.output<typeof schema>;
@@ -75,12 +75,12 @@ const { data, pending, error, execute } = await useAPIFetch<UploadResponse>("/up
 	body: formData,
 });
 
-const sttate = ref('initial');
+const sttate = ref("initial");
 const chat = ref<Chat | undefined>(undefined);
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  sttate.value = 'loading';
-  formData.append('image', event.data.image);
+	sttate.value = "loading";
+	formData.append("image", event.data.image);
 
 	await execute();
 
@@ -130,32 +130,5 @@ async function onError(event: any) {
 			color: "error",
 		});
 	});
-}
-
-async function validateImage(files: FileList | File[] | File | null) {
-	if (!files) {
-		state.image = undefined;
-		return;
-	}
-
-	const file = Array.isArray(files) ? files[0] : files instanceof FileList ? files[0] : files;
-	if (!file) return;
-
-	try {
-		await schema.pick({ image: true }).parseAsync({ image: file });
-		state.image = file;
-	}
-	catch (err: any) {
-		const firstError = err.errors?.[0]?.message || "Ensure the image dimension is " + DIMENSIONS.width + "x" + DIMENSIONS.height;
-
-		toast.add({
-			title: "Validation error:",
-			description: firstError,
-			icon: "i-lucide-circle-alert",
-			color: "error",
-		});
-
-		state.image = undefined;
-	}
 }
 </script>
