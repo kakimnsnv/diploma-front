@@ -9,10 +9,76 @@
 				<USkeleton class="h-48 w-full" />
 			</div>
 
+			<!-- Ошибка на уровне HTTP -->
+			<div v-else-if="error">
+				<UError :error="error" />
+				<UButton
+					block
+					to="/"
+					label="Go back"
+					class="mt-4"
+				/>
+			</div>
+
+			<!-- Ошибка сегментации (status: failed) -->
 			<div
-				v-if="!pending && chat"
+				v-else-if="isFailed"
+				class="flex flex-col items-center gap-4 py-8 text-center"
+			>
+				<UIcon
+					name="i-heroicons-exclamation-triangle"
+					class="w-12 h-12 text-red-500"
+				/>
+				<div>
+					<p class="text-lg font-semibold text-red-500">
+						Ошибка обработки
+					</p>
+					<div
+						v-if="chat?.name"
+						class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800"
+					>
+						<UIcon
+							name="i-heroicons-document"
+							class="w-3.5 h-3.5 text-gray-400 shrink-0"
+						/>
+						<span class="text-xs text-gray-500 font-mono truncate max-w-xs">{{ chat.name }}</span>
+					</div>
+					<p
+						v-if="chat?.error"
+						class="mt-2 text-sm text-gray-400 max-w-md break-words"
+					>
+						{{ chat.error }}
+					</p>
+					<p
+						v-else
+						class="mt-2 text-sm text-gray-400"
+					>
+						Не удалось выполнить сегментацию снимка.
+					</p>
+				</div>
+				<UButton
+					to="/"
+					label="Попробовать снова"
+					icon="i-heroicons-arrow-path"
+				/>
+			</div>
+
+			<!-- Успешный результат -->
+			<div
+				v-else-if="chat"
 				class="space-y-4 h-full"
 			>
+				<div
+					v-if="chat?.name"
+					class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800"
+				>
+					<UIcon
+						name="i-heroicons-document"
+						class="w-3.5 h-3.5 text-gray-400 shrink-0"
+					/>
+					<span class="text-xs text-gray-500 font-mono truncate max-w-xs">{{ chat.name }}</span>
+				</div>
+
 				<div class="flex flex-col md:flex-row gap-4">
 					<div
 						class="relative w-full md:w-1/2 mx-auto group cursor-zoom-in"
@@ -23,8 +89,12 @@
 							alt="Result"
 							class="aspect-square w-full rounded-lg"
 						/>
-						<div class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 rounded-lg flex items-center justify-center">
-							<div class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center gap-2 text-white">
+						<div
+							class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 rounded-lg flex items-center justify-center"
+						>
+							<div
+								class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center gap-2 text-white"
+							>
 								<UIcon
 									name="i-heroicons-magnifying-glass-plus"
 									class="w-10 h-10 drop-shadow-lg"
@@ -51,16 +121,6 @@
 					/>
 				</div>
 			</div>
-
-			<div v-if="!pending && error">
-				<UError :error="error" />
-				<UButton
-					block
-					to="/"
-					label="Go back"
-					class="mt-4"
-				/>
-			</div>
 		</template>
 	</UDashboardPanel>
 
@@ -79,7 +139,6 @@
 				class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
 				@click.self="closeLightbox"
 			>
-				<!-- Toolbar -->
 				<div class="absolute top-4 right-4 flex items-center gap-2 z-10">
 					<UButton
 						icon="i-heroicons-minus"
@@ -89,9 +148,7 @@
 						:disabled="zoom <= MIN_ZOOM"
 						@click="zoomOut"
 					/>
-					<span class="text-white text-sm font-mono w-14 text-center select-none">
-						{{ Math.round(zoom * 100) }}%
-					</span>
+					<span class="text-white text-sm font-mono w-14 text-center select-none">{{ Math.round(zoom * 100) }}%</span>
 					<UButton
 						icon="i-heroicons-plus"
 						color="white"
@@ -116,12 +173,10 @@
 					/>
 				</div>
 
-				<!-- Zoom hint -->
 				<div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-xs select-none pointer-events-none">
 					Колесо мыши для масштаба · Перетащите для перемещения
 				</div>
 
-				<!-- Image container -->
 				<div
 					ref="containerRef"
 					class="w-full h-full overflow-hidden flex items-center justify-center"
@@ -165,7 +220,9 @@ const {
 
 execute();
 
-// ─── Download ────────────────────────────────────────────────────────────────
+const isFailed = computed(() => chat.value?.status === "failed");
+
+// ─── Download ─────────────────────────────────────────────────────────────────
 
 const isDownloading = ref(false);
 
@@ -227,9 +284,8 @@ function zoomOut() {
 
 function onWheel(e: WheelEvent) {
 	const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-	const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, parseFloat((zoom.value + delta).toFixed(2))));
-	zoom.value = newZoom;
-	if (newZoom <= 1) pan.value = { x: 0, y: 0 };
+	zoom.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, parseFloat((zoom.value + delta).toFixed(2))));
+	if (zoom.value <= 1) pan.value = { x: 0, y: 0 };
 	else clampPan();
 }
 
@@ -241,10 +297,7 @@ function onMouseDown(e: MouseEvent) {
 
 function onMouseMove(e: MouseEvent) {
 	if (!isDragging.value) return;
-	pan.value = {
-		x: e.clientX - dragStart.value.x,
-		y: e.clientY - dragStart.value.y,
-	};
+	pan.value = { x: e.clientX - dragStart.value.x, y: e.clientY - dragStart.value.y };
 }
 
 function onMouseUp() {
