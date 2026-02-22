@@ -9,6 +9,7 @@ const colorMode = useColorMode();
 const appConfig = useAppConfig();
 const authStore = useAuthStore();
 const auth = useAuth();
+const router = useRouter();
 
 const colors = ["red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"];
 const neutrals = ["slate", "gray", "zinc", "neutral", "stone"];
@@ -17,10 +18,15 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 	type: "label",
 	label: authStore.user?.name,
 	avatar: {
-		// src: api.user.value?.avatar,
 		alt: authStore.user?.name,
 	},
 }], [{
+	label: "Settings",
+	icon: "i-lucide-settings",
+	onSelect() {
+		router.push("/profile");
+	},
+}, {
 	label: "Theme",
 	icon: "i-lucide-palette",
 	children: [{
@@ -39,7 +45,6 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 			type: "checkbox",
 			onSelect: (e) => {
 				e.preventDefault();
-
 				appConfig.ui.colors.primary = color;
 			},
 		})),
@@ -59,7 +64,6 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 			checked: appConfig.ui.colors.neutral === color,
 			onSelect: (e) => {
 				e.preventDefault();
-
 				appConfig.ui.colors.neutral = color;
 			},
 		})),
@@ -74,7 +78,6 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 		checked: colorMode.value === "light",
 		onSelect(e: Event) {
 			e.preventDefault();
-
 			colorMode.preference = "light";
 		},
 	}, {
@@ -83,9 +86,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 		type: "checkbox",
 		checked: colorMode.value === "dark",
 		onUpdateChecked(checked: boolean) {
-			if (checked) {
-				colorMode.preference = "dark";
-			}
+			if (checked) colorMode.preference = "dark";
 		},
 		onSelect(e: Event) {
 			e.preventDefault();
@@ -112,7 +113,6 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 				trailingIcon: collapsed ? undefined : 'i-lucide-chevrons-up-down',
 			}"
 			:avatar="{
-				// src: api.user.value?.avatar || undefined,
 				alt: authStore.user?.name,
 			}"
 			color="neutral"
