@@ -29,7 +29,7 @@
 							label="Drop your file here"
 							description=".nii file only"
 							accept=".nii"
-							class="h-[calc(100vh_-_8rem)]"
+							class="h-[calc(100vh_-_10rem)]"
 							highlight
 							dropzone
 						/>
@@ -38,7 +38,7 @@
 							type="submit"
 							label="Submit"
 							block
-							class="mt-2"
+							class="mt-2 mb-3"
 						/>
 					</UFormField>
 				</UForm>
@@ -86,7 +86,11 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 
 	if (!error.value) {
 		if (data.value) {
-			const { data: resultData, error: resultError, refresh } = await useAPIFetch<Chat>(`/results/${data.value.job_id}`, {
+			const {
+				data: resultData,
+				error: resultError,
+				refresh,
+			} = await useAPIFetch<Chat>(`/results/${data.value.job_id}`, {
 				method: "GET",
 				immediate: true,
 			});

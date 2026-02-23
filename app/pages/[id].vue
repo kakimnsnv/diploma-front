@@ -1,208 +1,252 @@
 <template>
-	<UDashboardPanel>
-		<template #header>
-			<DashboardNavbar />
-		</template>
-
-		<template #body>
-			<div v-if="pending">
-				<USkeleton class="h-48 w-full" />
-			</div>
-
-			<!-- Ошибка на уровне HTTP -->
-			<div v-else-if="error">
-				<UError :error="error" />
-				<UButton
-					block
-					to="/"
-					label="Go back"
-					class="mt-4"
-				/>
-			</div>
-
-			<!-- Ошибка сегментации (status: failed) -->
-			<div
-				v-else-if="isFailed"
-				class="flex flex-col items-center gap-4 py-8 text-center"
-			>
-				<UIcon
-					name="i-heroicons-exclamation-triangle"
-					class="w-12 h-12 text-red-500"
-				/>
-				<div>
-					<p class="text-lg font-semibold text-red-500">
-						Ошибка обработки
-					</p>
-					<div
-						v-if="chat?.name"
-						class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800"
-					>
-						<UIcon
-							name="i-heroicons-document"
-							class="w-3.5 h-3.5 text-gray-400 shrink-0"
+	<div class="w-full">
+		<UDashboardPanel>
+			<template #header>
+				<DashboardNavbar>
+					<template #leading>
+						<UBadge
+							v-if="chat?.name"
+							color="neutral"
+							variant="subtle"
+							size="sm"
+							leading-icon="i-heroicons-document"
+							class="max-w-xs hidden md:flex"
+						>
+							<span class="truncate font-mono text-xs">{{ chat.name }}</span>
+						</UBadge>
+					</template>
+					<template #action2>
+						<UButton
+							color="neutral"
+							variant="ghost"
+							icon="i-lucide-download"
+							:loading="isDownloading"
+							class="lg:hidden"
+							@click="downloadImage"
 						/>
-						<span class="text-xs text-gray-500 font-mono truncate max-w-xs">{{ chat.name }}</span>
-					</div>
-					<p
-						v-if="chat?.error"
-						class="mt-2 text-sm text-gray-400 max-w-md break-words"
-					>
-						{{ chat.error }}
-					</p>
-					<p
-						v-else
-						class="mt-2 text-sm text-gray-400"
-					>
-						Не удалось выполнить сегментацию снимка.
-					</p>
-				</div>
-				<UButton
-					to="/"
-					label="Попробовать снова"
-					icon="i-heroicons-arrow-path"
-				/>
-			</div>
+					</template>
+					<template #trailing>
+						<UButton
+							color="neutral"
+							variant="ghost"
+							icon="i-lucide-plus"
+							to="/"
+							class="lg:hidden"
+						/>
+					</template>>
+				</DashboardNavbar>
+			</template>
 
-			<!-- Успешный результат -->
-			<div
-				v-else-if="chat"
-				class="space-y-4 h-full"
-			>
+			<template #body>
+				<div v-if="pending">
+					<USkeleton class="h-48 w-full" />
+				</div>
+
+				<!-- Ошибка на уровне HTTP -->
+				<div v-else-if="error">
+					<UError :error="error" />
+					<UButton
+						block
+						to="/"
+						label="Go back"
+						class="mt-4"
+					/>
+				</div>
+
+				<!-- Ошибка сегментации (status: failed) -->
 				<div
-					v-if="chat?.name"
-					class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-gray-800"
+					v-else-if="isFailed"
+					class="flex flex-col items-center gap-4 py-8 text-center"
 				>
 					<UIcon
-						name="i-heroicons-document"
-						class="w-3.5 h-3.5 text-gray-400 shrink-0"
+						name="i-heroicons-exclamation-triangle"
+						class="w-12 h-12 text-error"
 					/>
-					<span class="text-xs text-gray-500 font-mono truncate max-w-xs">{{ chat.name }}</span>
+					<div>
+						<p class="text-lg font-semibold text-error">
+							Ошибка обработки
+						</p>
+						<div
+							v-if="chat?.name"
+							class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md"
+						>
+							<UIcon
+								name="i-heroicons-document"
+								class="w-3.5 h-3.5  shrink-0"
+							/>
+							<span class="text-xs  font-mono truncate max-w-xs">{{ chat.name }}</span>
+						</div>
+						<p
+							v-if="chat?.error_message"
+							class="mt-2 text-sm max-w-md break-words"
+						>
+							{{ chat.error_message }}
+						</p>
+						<p
+							v-else
+							class="mt-2 text-sm"
+						>
+							Не удалось выполнить сегментацию снимка.
+						</p>
+					</div>
+					<UButton
+						to="/"
+						label="Попробовать снова"
+						icon="i-heroicons-arrow-path"
+						class="text-center"
+					/>
 				</div>
 
-				<div class="flex flex-col md:flex-row gap-4">
-					<div
-						class="relative w-full md:w-1/2 mx-auto group cursor-zoom-in"
-						@click="openLightbox"
+				<!-- Успешный результат -->
+				<div
+					v-else-if="chat"
+					class="space-y-4 h-full"
+				>
+					<UBadge
+						v-if="chat?.name"
+						color="neutral"
+						variant="subtle"
+						size="sm"
+						leading-icon="i-heroicons-document"
+						class="max-w-xs md:hidden"
 					>
-						<NuxtImg
-							:src="chat?.output_image_url"
-							alt="Result"
-							class="aspect-square w-full rounded-lg"
-						/>
+						<span class="truncate font-mono text-xs">{{ chat.name }}</span>
+					</UBadge>
+
+					<div class="flex flex-col md:flex-row gap-4">
 						<div
-							class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 rounded-lg flex items-center justify-center"
+							class="relative w-full md:w-1/2 mx-auto group cursor-zoom-in"
+							@click="openLightbox"
 						>
+							<NuxtImg
+								:src="chat?.output_image_url"
+								alt="Result"
+								class="aspect-square w-full rounded-lg outline-primary outline-dashed"
+							/>
 							<div
-								class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center gap-2 text-white"
+								class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 rounded-lg flex items-center justify-center"
 							>
-								<UIcon
-									name="i-heroicons-magnifying-glass-plus"
-									class="w-10 h-10 drop-shadow-lg"
-								/>
-								<span class="text-sm font-medium drop-shadow-lg">Нажмите для просмотра</span>
+								<div
+									class="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center gap-2"
+								>
+									<UIcon
+										name="i-heroicons-magnifying-glass-plus"
+										class="w-10 h-10 drop-shadow-lg"
+									/>
+									<span class="text-sm font-medium drop-shadow-lg">Нажмите для просмотра</span>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
 
-				<div class="flex gap-4 mt-4">
-					<UButton
-						label="Download image"
-						icon="i-heroicons-arrow-down-tray"
-						:loading="isDownloading"
-						class="flex-1"
-						@click="downloadImage"
-					/>
-					<UButton
-						label="New chat"
-						to="/"
-						:disabled="isPolling"
-						class="flex-1"
-					/>
+					<div class="flex gap-4 mt-4">
+						<UButton
+							label="New chat"
+							icon="i-lucide-file-plus-corner"
+							to="/"
+							block
+							size="lg"
+							:disabled="pending"
+							class="hidden lg:flex"
+						/>
+						<UButton
+							label="Download image"
+							icon="i-lucide-download"
+							:loading="isDownloading"
+							block
+							size="lg"
+							class="hidden lg:flex"
+							@click="downloadImage"
+						/>
+					</div>
 				</div>
-			</div>
-		</template>
-	</UDashboardPanel>
+			</template>
+		</UDashboardPanel>
 
-	<!-- Lightbox -->
-	<Teleport to="body">
-		<Transition
-			enter-active-class="transition duration-200 ease-out"
-			enter-from-class="opacity-0 scale-95"
-			enter-to-class="opacity-100 scale-100"
-			leave-active-class="transition duration-150 ease-in"
-			leave-from-class="opacity-100 scale-100"
-			leave-to-class="opacity-0 scale-95"
-		>
-			<div
-				v-if="lightboxOpen"
-				class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
-				@click.self="closeLightbox"
+		<!-- Lightbox -->
+		<Teleport to="body">
+			<Transition
+				enter-active-class="transition duration-200 ease-out"
+				enter-from-class="opacity-0 scale-95"
+				enter-to-class="opacity-100 scale-100"
+				leave-active-class="transition duration-150 ease-in"
+				leave-from-class="opacity-100 scale-100"
+				leave-to-class="opacity-0 scale-95"
 			>
-				<div class="absolute top-4 right-4 flex items-center gap-2 z-10">
-					<UButton
-						icon="i-heroicons-minus"
-						color="white"
-						variant="soft"
-						size="sm"
-						:disabled="zoom <= MIN_ZOOM"
-						@click="zoomOut"
-					/>
-					<span class="text-white text-sm font-mono w-14 text-center select-none">{{ Math.round(zoom * 100) }}%</span>
-					<UButton
-						icon="i-heroicons-plus"
-						color="white"
-						variant="soft"
-						size="sm"
-						:disabled="zoom >= MAX_ZOOM"
-						@click="zoomIn"
-					/>
-					<UButton
-						icon="i-heroicons-arrow-path"
-						color="white"
-						variant="soft"
-						size="sm"
-						@click="resetView"
-					/>
-					<UButton
-						icon="i-heroicons-x-mark"
-						color="white"
-						variant="soft"
-						size="sm"
-						@click="closeLightbox"
-					/>
-				</div>
-
-				<div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/50 text-xs select-none pointer-events-none">
-					Колесо мыши для масштаба · Перетащите для перемещения
-				</div>
-
 				<div
-					ref="containerRef"
-					class="w-full h-full overflow-hidden flex items-center justify-center"
-					:class="zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'"
-					@wheel.prevent="onWheel"
-					@mousedown="onMouseDown"
-					@mousemove="onMouseMove"
-					@mouseup="onMouseUp"
-					@mouseleave="onMouseUp"
+					v-if="lightboxOpen"
+					class="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+					@click.self="closeLightbox"
 				>
-					<img
-						:src="chat?.output_image_url"
-						alt="Result"
-						class="select-none pointer-events-none max-w-none"
-						:style="{
-							transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-							transition: isDragging ? 'none' : 'transform 0.15s ease',
-							maxHeight: '90vh',
-							maxWidth: '90vw',
-						}"
-						draggable="false"
+					<div class="absolute top-4 right-4 flex items-center gap-2 z-10">
+						<UButton
+							icon="i-heroicons-minus"
+							color="primary"
+							variant="soft"
+							size="sm"
+							:disabled="zoom <= MIN_ZOOM"
+							@click="zoomOut"
+						/>
+						<span class="text-neutral text-sm font-mono w-14 text-center select-none">{{ Math.round(zoom * 100) }}%</span>
+						<UButton
+							icon="i-heroicons-plus"
+							color="primary"
+							variant="soft"
+							size="sm"
+							:disabled="zoom >= MAX_ZOOM"
+							@click="zoomIn"
+						/>
+						<UButton
+							icon="i-heroicons-arrow-path"
+							color="primary"
+							variant="soft"
+							size="sm"
+							@click="resetView"
+						/>
+						<UButton
+							icon="i-heroicons-x-mark"
+							color="primary"
+							variant="soft"
+							size="sm"
+							@click="closeLightbox"
+						/>
+					</div>
+
+					<div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs select-none pointer-events-none">
+						Колесо мыши / pinch для масштаба · Перетащите для перемещения
+					</div>
+
+					<div
+						ref="containerRef"
+						class="w-full h-full overflow-hidden flex items-center justify-center touch-none"
+						:class="zoom > 1 ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'"
+						@wheel.prevent="onWheel"
+						@mousedown="onMouseDown"
+						@mousemove="onMouseMove"
+						@mouseup="onMouseUp"
+						@mouseleave="onMouseUp"
+						@touchstart.prevent="onTouchStart"
+						@touchmove.prevent="onTouchMove"
+						@touchend.prevent="onTouchEnd"
+						@touchcancel.prevent="onTouchEnd"
 					>
+						<img
+							:src="chat?.output_image_url"
+							alt="Result"
+							class="select-none pointer-events-none max-w-none"
+							:style="{
+								transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+								transition: isDragging ? 'none' : 'transform 0.15s ease',
+								maxHeight: '90vh',
+								maxWidth: '90vw',
+							}"
+							draggable="false"
+						>
+					</div>
 				</div>
-			</div>
-		</Transition>
-	</Teleport>
+			</Transition>
+		</Teleport>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -256,6 +300,15 @@ const pan = ref({ x: 0, y: 0 });
 const isDragging = ref(false);
 const dragStart = ref({ x: 0, y: 0 });
 const containerRef = ref<HTMLElement | null>(null);
+
+// Touch state
+const touchState = ref<{
+	lastDistance: number;
+	lastCenter: { x: number; y: number };
+	lastZoom: number;
+	lastPan: { x: number; y: number };
+	singleStart: { x: number; y: number };
+} | null>(null);
 
 function openLightbox() {
 	lightboxOpen.value = true;
@@ -321,5 +374,105 @@ function onKeyDown(e: KeyboardEvent) {
 	if (e.key === "+" || e.key === "=") zoomIn();
 	if (e.key === "-") zoomOut();
 	if (e.key === "0") resetView();
+}
+
+function getTouchDistance(touches: TouchList) {
+	if (touches.length < 2) return 0;
+	const a = touches.item(0);
+	const b = touches.item(1);
+	return a && b ? Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY) : 0;
+}
+
+function getTouchCenter(touches: TouchList) {
+	if (touches.length === 0) return { x: 0, y: 0 };
+	const a = touches.item(0);
+	if (!a) return { x: 0, y: 0 };
+	if (touches.length === 1) return { x: a.clientX, y: a.clientY };
+	const b = touches.item(1);
+	return b
+		? { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 }
+		: { x: a.clientX, y: a.clientY };
+}
+
+function onTouchStart(e: TouchEvent) {
+	if (e.touches.length === 2) {
+		const distance = getTouchDistance(e.touches);
+		const center = getTouchCenter(e.touches);
+		touchState.value = {
+			lastDistance: distance,
+			lastCenter: center,
+			lastZoom: zoom.value,
+			lastPan: { ...pan.value },
+			singleStart: { x: 0, y: 0 },
+		};
+	}
+	else if (e.touches.length === 1) {
+		const t = e.touches.item(0);
+		if (t) {
+			touchState.value = {
+				lastDistance: 0,
+				lastCenter: { x: 0, y: 0 },
+				lastZoom: zoom.value,
+				lastPan: { ...pan.value },
+				singleStart: { x: t.clientX - pan.value.x, y: t.clientY - pan.value.y },
+			};
+		}
+	}
+}
+
+function onTouchMove(e: TouchEvent) {
+	if (!touchState.value) return;
+	if (e.touches.length === 2) {
+		const distance = getTouchDistance(e.touches);
+		if (touchState.value.lastDistance > 0) {
+			const scale = distance / touchState.value.lastDistance;
+			zoom.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, parseFloat((touchState.value.lastZoom * scale).toFixed(2))));
+			const center = getTouchCenter(e.touches);
+			pan.value = {
+				x: touchState.value.lastPan.x + (center.x - touchState.value.lastCenter.x),
+				y: touchState.value.lastPan.y + (center.y - touchState.value.lastCenter.y),
+			};
+			touchState.value.lastDistance = distance;
+			touchState.value.lastCenter = center;
+			touchState.value.lastZoom = zoom.value;
+			touchState.value.lastPan = { ...pan.value };
+		}
+	}
+	else if (e.touches.length === 1) {
+		const t = e.touches.item(0);
+		const state = touchState.value;
+		if (t && state) {
+			pan.value = {
+				x: t.clientX - state.singleStart.x,
+				y: t.clientY - state.singleStart.y,
+			};
+		}
+	}
+}
+
+function onTouchEnd(e: TouchEvent) {
+	if (e.touches.length < 2) {
+		if (e.touches.length === 1 && touchState.value) {
+			const t = e.touches.item(0);
+			if (t) {
+				touchState.value.singleStart = { x: t.clientX - pan.value.x, y: t.clientY - pan.value.y };
+			}
+		}
+		else {
+			touchState.value = null;
+			if (zoom.value <= 1) pan.value = { x: 0, y: 0 };
+			else clampPan();
+		}
+	}
+	else {
+		const prev = touchState.value;
+		touchState.value = {
+			lastDistance: getTouchDistance(e.touches),
+			lastCenter: getTouchCenter(e.touches),
+			lastZoom: zoom.value,
+			lastPan: { ...pan.value },
+			singleStart: prev?.singleStart ?? { x: 0, y: 0 },
+		};
+	}
 }
 </script>

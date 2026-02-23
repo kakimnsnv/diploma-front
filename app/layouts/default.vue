@@ -20,8 +20,8 @@ const chatItems = computed(() => chats.value?.map((chat: Chat) => ({
 	icon: "i-lucide-message-circle",
 	label: `${chat.id} ${chat.name.length > 10 ? chat.name.slice(0, 10) + "…" : chat.name}: ${ago(chat.created_at)}`,
 	avatar: {
-		src: chat.original_image_url,
-		alt: chat.original_image_url,
+		src: chat.output_image_url,
+		alt: chat.output_image_url,
 	},
 })));
 
