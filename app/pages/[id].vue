@@ -15,6 +15,16 @@
 							<span class="truncate font-mono text-xs">{{ chat.name }}</span>
 						</UBadge>
 					</template>
+					<template #action1>
+						<UButton
+							color="error"
+							variant="ghost"
+							icon="i-lucide-trash"
+							to="/"
+							:loading="isDeleting"
+							@click="deleteRecord()"
+						/>
+					</template>
 					<template #action2>
 						<UButton
 							color="neutral"
@@ -287,6 +297,32 @@ async function downloadImage() {
 		isDownloading.value = false;
 	}
 }
+
+// ─── Delete ─────────────────────────────────────────────────────────────────
+
+async function deleteRecord() {
+	await deleteChat();
+	await refreshNuxtData("history");
+}
+
+const {
+	error: deleteError,
+	pending: isDeleting,
+	execute: deleteChat,
+} = await useAPIFetch<Chat>(() => `/results/${id.value}`, {
+	method: "DELETE",
+});
+
+const toast = useToast();
+
+watch(deleteError, async () => {
+	toast.add({
+		title: "Delete Error",
+		description: error.value?.data?.error || "Failed to delete record. Please try again.",
+		icon: "i-lucide-circle-alert",
+		color: "error",
+	});
+});
 
 // ─── Lightbox ─────────────────────────────────────────────────────────────────
 
