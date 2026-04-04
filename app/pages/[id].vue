@@ -110,7 +110,7 @@
 				<!-- Успешный результат -->
 				<div
 					v-else-if="chat"
-					class="space-y-4 h-full"
+					class="space-y-4"
 				>
 					<UBadge
 						v-if="chat?.name"
@@ -131,7 +131,7 @@
 							<NuxtImg
 								:src="chat?.output_image_url"
 								alt="Result"
-								class="aspect-square w-full rounded-lg outline-primary outline-dashed"
+								class="aspect-square w-full max-h-[60vh] object-contain rounded-lg outline-primary outline-dashed"
 							/>
 							<div
 								class="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all duration-300 rounded-lg flex items-center justify-center"
@@ -149,6 +149,61 @@
 						</div>
 					</div>
 
+					<!-- Classification Result -->
+					<div
+						v-if="chat?.classification_result"
+						class="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2"
+					>
+						<div class="flex items-center gap-2">
+							<UIcon
+								name="i-lucide-brain"
+								class="w-5 h-5 text-primary"
+							/>
+							<span class="font-semibold">Classification Result</span>
+						</div>
+						<div class="grid grid-cols-2 gap-2 text-sm">
+							<div>
+								<span class="text-muted">Class:</span>
+								<span class="ml-1 font-medium">{{ chat.classification_result.predicted_class_name }}</span>
+							</div>
+							<div>
+								<span class="text-muted">Confidence:</span>
+								<span class="ml-1 font-medium">{{ (chat.classification_result.confidence * 100).toFixed(1) }}%</span>
+							</div>
+						</div>
+					</div>
+
+					<!-- Segment upload for classification-only jobs -->
+					<div
+						v-if="!chat?.input_nii_url"
+						class="rounded-lg border border-dashed border-neutral/40 p-4 space-y-3"
+					>
+						<div class="flex items-center gap-2 text-sm text-muted">
+							<UIcon
+								name="i-lucide-scan"
+								class="w-4 h-4"
+							/>
+							<span>Add segmentation to this result</span>
+						</div>
+						<div class="flex gap-2 items-center">
+							<input
+								ref="niiInput"
+								type="file"
+								accept=".nii"
+								class="text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
+								@change="onNiiSelected"
+							>
+							<UButton
+								v-if="selectedNii"
+								label="Segment"
+								icon="i-lucide-scan"
+								size="sm"
+								:loading="isSegmenting"
+								@click="segmentJob"
+							/>
+						</div>
+					</div>
+
 					<div class="flex gap-4 mt-4">
 						<UButton
 							label="New chat"
@@ -158,6 +213,15 @@
 							size="lg"
 							:disabled="pending"
 							class="hidden lg:flex"
+						/>
+						<UButton
+							v-if="!chat?.classification_result"
+							label="Classify"
+							icon="i-lucide-brain"
+							:loading="isClassifying"
+							block
+							size="lg"
+							@click="classifyImage"
 						/>
 						<UButton
 							label="Download image"
@@ -295,6 +359,100 @@ async function downloadImage() {
 	}
 	finally {
 		isDownloading.value = false;
+	}
+}
+
+// ─── Segment ────────────────────────────────────────────────────────────────
+
+const selectedNii = ref<File | null>(null);
+const isSegmenting = ref(false);
+const niiInput = ref<HTMLInputElement | null>(null);
+
+function onNiiSelected(e: Event) {
+	const input = e.target as HTMLInputElement;
+	selectedNii.value = input.files?.[0] ?? null;
+}
+
+async function segmentJob() {
+	if (!selectedNii.value) return;
+	isSegmenting.value = true;
+	try {
+		const config = useRuntimeConfig();
+		const formData = new FormData();
+		formData.append("image", selectedNii.value);
+
+		await $fetch(`/results/${id.value}/segment`, {
+			baseURL: config.public.baseURL,
+			method: "POST",
+			body: formData,
+			credentials: "include",
+		});
+
+		// Poll for completion
+		let attempts = 0;
+		const MAX_ATTEMPTS = 60;
+		while (attempts < MAX_ATTEMPTS) {
+			await new Promise(resolve => setTimeout(resolve, 1000));
+			await execute();
+			if (chat.value?.status === "completed" || chat.value?.status === "failed") break;
+			attempts++;
+		}
+
+		if (chat.value?.status === "completed") {
+			toast.add({
+				title: "Segmentation Complete",
+				description: "NII file has been segmented successfully.",
+				icon: "i-lucide-scan",
+				color: "success",
+			});
+		}
+	}
+	catch (err: any) {
+		toast.add({
+			title: "Segmentation Error",
+			description: err?.data?.error || "Failed to segment image.",
+			icon: "i-lucide-circle-alert",
+			color: "error",
+		});
+	}
+	finally {
+		isSegmenting.value = false;
+		selectedNii.value = null;
+		if (niiInput.value) niiInput.value.value = "";
+	}
+}
+
+// ─── Classify ───────────────────────────────────────────────────────────────
+
+const isClassifying = ref(false);
+
+async function classifyImage() {
+	isClassifying.value = true;
+	try {
+		const config = useRuntimeConfig();
+		const result = await $fetch<ClassificationResult>(`/results/${id.value}/classify`, {
+			baseURL: config.public.baseURL,
+			method: "POST",
+			credentials: "include",
+		});
+		await execute();
+		toast.add({
+			title: "Classification Complete",
+			description: `Predicted: ${result.predicted_class_name}`,
+			icon: "i-lucide-brain",
+			color: "success",
+		});
+	}
+	catch (err: any) {
+		toast.add({
+			title: "Classification Error",
+			description: err?.data?.error || "Failed to classify image.",
+			icon: "i-lucide-circle-alert",
+			color: "error",
+		});
+	}
+	finally {
+		isClassifying.value = false;
 	}
 }
 

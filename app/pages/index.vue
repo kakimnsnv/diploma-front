@@ -5,14 +5,32 @@
 		</template>
 
 		<template #body>
+			<!-- Tab switcher -->
 			<div
 				v-if="sttate === 'initial'"
-				class="h-full flex items-end"
+				class="h-full flex flex-col"
 			>
+				<div class="flex gap-2 mb-4">
+					<UButton
+						label="Segmentation"
+						icon="i-lucide-scan"
+						:variant="activeTab === 'segmentation' ? 'solid' : 'ghost'"
+						@click="activeTab = 'segmentation'"
+					/>
+					<UButton
+						label="Classification"
+						icon="i-lucide-brain"
+						:variant="activeTab === 'classification' ? 'solid' : 'ghost'"
+						@click="activeTab = 'classification'"
+					/>
+				</div>
+
+				<!-- Segmentation upload -->
 				<UForm
+					v-if="activeTab === 'segmentation'"
 					:schema="schema"
 					:state="state"
-					class="space-y-4 w-full h-full"
+					class="space-y-4 w-full flex-1"
 					:loading="pending"
 					:disabled="pending"
 					@submit="onSubmit"
@@ -26,10 +44,10 @@
 						<UFileUpload
 							v-model="state.image"
 							icon="i-lucide-file-chart-column"
-							label="Drop your file here"
+							label="Drop your NII file here"
 							description=".nii file only"
 							accept=".nii"
-							class="h-[calc(100vh_-_10rem)]"
+							class="h-[calc(100vh_-_14rem)]"
 							highlight
 							dropzone
 						/>
@@ -42,6 +60,43 @@
 						/>
 					</UFormField>
 				</UForm>
+
+				<!-- Classification upload -->
+				<UForm
+					v-if="activeTab === 'classification'"
+					:schema="classifySchema"
+					:state="classifyState"
+					class="space-y-4 w-full flex-1"
+					:loading="classifyPending"
+					:disabled="classifyPending"
+					@submit="onClassifySubmit"
+					@error="onError"
+				>
+					<UFormField
+						name="image"
+						class="h-full"
+						:error="classifyError?.data?.error"
+					>
+						<UFileUpload
+							v-model="classifyState.image"
+							icon="i-lucide-brain"
+							label="Drop your image here"
+							description=".png, .jpg, .tiff files"
+							accept=".png,.jpg,.jpeg,.tiff"
+							class="h-[calc(100vh_-_14rem)]"
+							highlight
+							dropzone
+						/>
+						<UButton
+							v-if="classifyState.image"
+							type="submit"
+							label="Classify"
+							block
+							class="mt-2 mb-3"
+						/>
+					</UFormField>
+				</UForm>
+
 			</div>
 
 			<div v-if="sttate === 'loading'">
@@ -57,6 +112,10 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 import z from "zod";
 
 const toast = useToast();
+const activeTab = ref<"segmentation" | "classification">("segmentation");
+
+// ─── Segmentation ───────────────────────────────────────────────────────────
+
 const schema = z.object({
 	image: z.instanceof(File, {
 		message: "Please select a file.",
@@ -124,6 +183,58 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 		});
 	}
 }
+
+// ─── Classification ─────────────────────────────────────────────────────────
+
+const classifySchema = z.object({
+	image: z.instanceof(File, {
+		message: "Please select a file.",
+	}),
+});
+
+type ClassifySchema = z.output<typeof classifySchema>;
+
+const classifyState = reactive<Partial<ClassifySchema>>({
+	image: undefined,
+});
+
+const classifyPending = ref(false);
+const classifyError = ref<any>(null);
+
+async function onClassifySubmit(event: FormSubmitEvent<ClassifySchema>) {
+	classifyPending.value = true;
+	classifyError.value = null;
+
+	try {
+		const config = useRuntimeConfig();
+		const formData = new FormData();
+		formData.append("image", event.data.image);
+
+		const result = await $fetch<{ id: number }>("/classify", {
+			baseURL: config.public.baseURL,
+			method: "POST",
+			body: formData,
+			credentials: "include",
+		});
+
+		await refreshNuxtData("history");
+		await navigateTo(`/${result.id}`, { replace: true });
+	}
+	catch (err: any) {
+		classifyError.value = err;
+		toast.add({
+			title: "Classification Error",
+			description: err?.data?.error || "Failed to classify image.",
+			icon: "i-lucide-circle-alert",
+			color: "error",
+		});
+	}
+	finally {
+		classifyPending.value = false;
+	}
+}
+
+// ─── Shared ─────────────────────────────────────────────────────────────────
 
 async function onError(event: any) {
 	event.errors.forEach((err: any) => {
