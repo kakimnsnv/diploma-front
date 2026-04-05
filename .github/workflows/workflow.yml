@@ -55,12 +55,17 @@ jobs:
               sudo npm install -g pm2
             fi
 
+            # Load .env into this shell so PM2 inherits the vars
+            set -a
+            source .env
+            set +a
+
             if pm2 list | grep -q "medical-front"; then
               echo "Restarting application..."
-              pm2 restart medical-front
+              pm2 restart medical-front --update-env
             else
               echo "Starting application for the first time..."
-              pm2 start .output/server/index.mjs --name medical-front
+              pm2 start .output/server/index.mjs --name medical-front --update-env
             fi
 
             pm2 save
