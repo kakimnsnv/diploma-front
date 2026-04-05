@@ -207,7 +207,7 @@
 					<div class="flex gap-4 mt-4">
 						<UButton
 							label="New chat"
-							icon="i-lucide-file-plus-corner"
+							icon="i-lucide-file-plus"
 							to="/"
 							block
 							size="lg"
