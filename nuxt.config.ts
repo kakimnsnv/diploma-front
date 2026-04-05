@@ -15,6 +15,9 @@ export default defineNuxtConfig({
 		},
 	},
 	css: ["~/assets/css/main.css"],
+	icon: {
+		localApiEndpoint: "/_nuxt_icon",
+	},
 	runtimeConfig: {
 		public: {
 			// baseURL: "https://api-mri-ai.nsnv.kz/api",

@@ -19,6 +19,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
 
 		// Профиль не получили — редирект на логин
 		if (!to.path.startsWith("/auth")) {
+			setPageLayout("auth");
 			return navigateTo({
 				path: "/auth/login",
 				query: { redirect: to.fullPath },
