@@ -33,7 +33,16 @@ watch(() => authStore.isLoggedIn, () => {
 </script>
 
 <template>
-	<UDashboardGroup unit="rem">
+	<div
+		v-if="!authStore.isLoggedIn"
+		class="min-h-screen"
+	>
+		<slot />
+	</div>
+	<UDashboardGroup
+		v-else
+		unit="rem"
+	>
 		<UDashboardSidebar
 			id="default"
 			v-model:open="open"
