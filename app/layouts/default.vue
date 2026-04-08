@@ -4,6 +4,8 @@ const authStore = useAuthStore();
 const { ago } = useDate();
 
 const open = ref(false);
+const mounted = ref(false);
+onMounted(() => { mounted.value = true; });
 
 const {
 	data: chats,
@@ -34,7 +36,7 @@ watch(() => authStore.isLoggedIn, () => {
 
 <template>
 	<div
-		v-if="!authStore.isLoggedIn"
+		v-if="!mounted || !authStore.isLoggedIn"
 		class="min-h-screen"
 	>
 		<slot />

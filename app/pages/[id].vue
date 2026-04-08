@@ -332,11 +332,11 @@ const {
 	pending,
 	error,
 	execute,
-} = await useAPIFetch<Chat>(() => `/results/${id.value}`, {
+} = useAPIFetch<Chat>(() => `/results/${id.value}`, {
 	key: () => `results-${id.value}`,
 });
 
-execute();
+await execute();
 
 const isFailed = computed(() => chat.value?.status === "failed");
 
@@ -467,7 +467,7 @@ const {
 	error: deleteError,
 	pending: isDeleting,
 	execute: deleteChat,
-} = await useAPIFetch<Chat>(() => `/results/${id.value}`, {
+} = useAPIFetch<Chat>(() => `/results/${id.value}`, {
 	method: "DELETE",
 });
 

@@ -28,6 +28,16 @@ declare global {
 	interface UploadResponse {
 		job_id: string;
 	}
+
+	interface SlicesResponse {
+		status: string;
+		message: string;
+		shape: number[];
+		classes_detected: number[];
+		total_slices: number;
+		nifti_path: string | null;
+		slices: string[];
+	}
 }
 
 export {};

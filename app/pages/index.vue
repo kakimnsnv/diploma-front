@@ -23,6 +23,12 @@
 						:variant="activeTab === 'classification' ? 'solid' : 'ghost'"
 						@click="activeTab = 'classification'"
 					/>
+					<UButton
+						label="MRI Viewer"
+						icon="i-lucide-layers"
+						:variant="activeTab === 'mri-viewer' ? 'solid' : 'ghost'"
+						@click="activeTab = 'mri-viewer'"
+					/>
 				</div>
 
 				<!-- Segmentation upload -->
@@ -60,6 +66,52 @@
 						/>
 					</UFormField>
 				</UForm>
+
+				<!-- MRI Viewer upload -->
+				<div v-if="activeTab === 'mri-viewer'">
+					<div v-if="mriSlices.length > 0" class="space-y-4">
+						<UButton
+							label="Upload another"
+							icon="i-lucide-arrow-left"
+							variant="ghost"
+							@click="mriSlices = []"
+						/>
+						<MriSliceViewer :slices="mriSlices" />
+					</div>
+					<UForm
+						v-else
+						:schema="mriSchema"
+						:state="mriState"
+						class="space-y-4 w-full flex-1"
+						:loading="mriPending"
+						:disabled="mriPending"
+						@submit="onMriSubmit"
+						@error="onError"
+					>
+						<UFormField
+							name="image"
+							class="h-full"
+						>
+							<UFileUpload
+								v-model="mriState.image"
+								icon="i-lucide-layers"
+								label="Drop your NII file here"
+								description=".nii file only"
+								accept=".nii"
+								class="h-[calc(100vh_-_14rem)]"
+								highlight
+								dropzone
+							/>
+							<UButton
+								v-if="mriState.image"
+								type="submit"
+								label="View Slices"
+								block
+								class="mt-2 mb-3"
+							/>
+						</UFormField>
+					</UForm>
+				</div>
 
 				<!-- Classification upload -->
 				<UForm
@@ -112,7 +164,7 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 import z from "zod";
 
 const toast = useToast();
-const activeTab = ref<"segmentation" | "classification">("segmentation");
+const activeTab = ref<"segmentation" | "classification" | "mri-viewer">("segmentation");
 
 // ─── Segmentation ───────────────────────────────────────────────────────────
 
@@ -128,52 +180,73 @@ const state = reactive<Partial<Schema>>({
 	image: undefined,
 });
 
-const formData = new FormData();
-const { data, pending, error, execute } = await useAPIFetch<UploadResponse>("/upload", {
-	method: "POST",
-	body: formData,
-});
+const uploadData = ref<UploadResponse | null>(null);
+const pending = ref(false);
+const error = ref<any>(null);
 
 const sttate = ref("initial");
 const chat = ref<Chat | undefined>(undefined);
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
 	sttate.value = "loading";
+	pending.value = true;
+	error.value = null;
+
+	const formData = new FormData();
 	formData.append("image", event.data.image);
 
-	await execute();
+	try {
+		const config = useRuntimeConfig();
+		uploadData.value = await $fetch<UploadResponse>("/upload", {
+			baseURL: config.public.baseURL,
+			method: "POST",
+			body: formData,
+			credentials: "include",
+		});
+	}
+	catch (err: any) {
+		error.value = err;
+	}
+	finally {
+		pending.value = false;
+	}
 
-	if (!error.value) {
-		if (data.value) {
-			const {
-				data: resultData,
-				error: resultError,
-				refresh,
-			} = await useAPIFetch<Chat>(`/results/${data.value.job_id}`, {
-				method: "GET",
-				immediate: true,
-			});
-			let attempts = 0;
-			const MAX_ATTEMPTS = 60;
-			while (resultData.value?.status !== "completed" && attempts < MAX_ATTEMPTS) {
-				await new Promise(resolve => setTimeout(resolve, 1000));
-				await refresh();
-				if (resultError.value || resultData.value?.status === "failed") break;
-				attempts++;
+	if (!error.value && uploadData.value) {
+		const jobId = uploadData.value.job_id;
+		const config = useRuntimeConfig();
+		let attempts = 0;
+		const MAX_ATTEMPTS = 60;
+		let resultData: Chat | null = null;
+
+		while (attempts < MAX_ATTEMPTS) {
+			await new Promise(resolve => setTimeout(resolve, 1000));
+			try {
+				resultData = await $fetch<Chat>(`/results/${jobId}`, {
+					baseURL: config.public.baseURL,
+					method: "GET",
+					credentials: "include",
+				});
 			}
-			if (resultError.value || resultData.value?.status === "failed") {
+			catch {
 				sttate.value = "error";
 				return;
 			}
-			chat.value = resultData.value;
-			sttate.value = "completed";
-
-			await refreshNuxtData("history");
-
-			await navigateTo(`/${data.value.job_id}`, { replace: true });
+			if (resultData?.status === "completed" || resultData?.status === "failed") break;
+			attempts++;
 		}
+
+		if (!resultData || resultData.status === "failed") {
+			sttate.value = "error";
+			return;
+		}
+		chat.value = resultData;
+		sttate.value = "completed";
+
+		await refreshNuxtData("history");
+
+		await navigateTo(`/${jobId}`, { replace: true });
 	}
-	else {
+	else if (error.value) {
 		sttate.value = "initial";
 		toast.add({
 			title: "Upload Error",
@@ -231,6 +304,53 @@ async function onClassifySubmit(event: FormSubmitEvent<ClassifySchema>) {
 	}
 	finally {
 		classifyPending.value = false;
+	}
+}
+
+// ─── MRI Viewer ────────────────────────────────────────────────────────────
+
+const mriSchema = z.object({
+	image: z.instanceof(File, {
+		message: "Please select a file.",
+	}),
+});
+
+type MriSchema = z.output<typeof mriSchema>;
+
+const mriState = reactive<Partial<MriSchema>>({
+	image: undefined,
+});
+
+const mriPending = ref(false);
+const mriSlices = ref<string[]>([]);
+
+async function onMriSubmit(event: FormSubmitEvent<MriSchema>) {
+	mriPending.value = true;
+
+	try {
+		const config = useRuntimeConfig();
+		const formData = new FormData();
+		formData.append("image", event.data.image);
+
+		const result = await $fetch<SlicesResponse>("/slices", {
+			baseURL: config.public.baseURL,
+			method: "POST",
+			body: formData,
+			credentials: "include",
+		});
+
+		mriSlices.value = result.slices;
+	}
+	catch (err: any) {
+		toast.add({
+			title: "MRI Viewer Error",
+			description: err?.data?.error || "Failed to process MRI file.",
+			icon: "i-lucide-circle-alert",
+			color: "error",
+		});
+	}
+	finally {
+		mriPending.value = false;
 	}
 }
 
