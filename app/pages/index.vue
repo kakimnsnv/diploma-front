@@ -78,6 +78,18 @@
 						/>
 						<MriSliceViewer :slices="mriSlices" />
 					</div>
+					<div
+						v-else-if="mriPending"
+						class="flex flex-col items-center justify-center gap-4 h-[calc(100vh_-_14rem)]"
+					>
+						<UIcon
+							name="i-lucide-loader-circle"
+							class="h-10 w-10 animate-spin text-primary"
+						/>
+						<p class="text-sm text-dimmed">
+							Processing MRI slices...
+						</p>
+					</div>
 					<UForm
 						v-else
 						:schema="mriSchema"
@@ -133,8 +145,8 @@
 							v-model="classifyState.image"
 							icon="i-lucide-brain"
 							label="Drop your image here"
-							description=".png, .jpg, .tiff files"
-							accept=".png,.jpg,.jpeg,.tiff"
+							description=".png, .jpg, .tiff, .nii files"
+							accept=".png,.jpg,.jpeg,.tiff,.nii"
 							class="h-[calc(100vh_-_14rem)]"
 							highlight
 							dropzone
