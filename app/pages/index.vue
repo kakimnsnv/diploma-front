@@ -126,8 +126,20 @@
 				</div>
 
 				<!-- Classification upload -->
+				<div
+					v-if="activeTab === 'classification' && classifyPending"
+					class="flex flex-col items-center justify-center gap-4 h-[calc(100vh_-_14rem)]"
+				>
+					<UIcon
+						name="i-lucide-loader-circle"
+						class="h-10 w-10 animate-spin text-primary"
+					/>
+					<p class="text-sm text-dimmed">
+						Classifying image...
+					</p>
+				</div>
 				<UForm
-					v-if="activeTab === 'classification'"
+					v-else-if="activeTab === 'classification'"
 					:schema="classifySchema"
 					:state="classifyState"
 					class="space-y-4 w-full flex-1"
