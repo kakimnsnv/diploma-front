@@ -391,12 +391,20 @@ async function segmentJob() {
 		// Poll for completion
 		let attempts = 0;
 		const MAX_ATTEMPTS = 60;
+		let resultData: Chat | null = null;
 		while (attempts < MAX_ATTEMPTS) {
 			await new Promise(resolve => setTimeout(resolve, 1000));
-			await execute();
-			if (chat.value?.status === "completed" || chat.value?.status === "failed") break;
+			resultData = await $fetch<Chat>(`/results/${id.value}`, {
+				baseURL: config.public.baseURL,
+				method: "GET",
+				credentials: "include",
+			});
+			if (resultData?.status === "completed" || resultData?.status === "failed") break;
 			attempts++;
 		}
+
+		// Обновляем данные один раз после завершения
+		await execute();
 
 		if (chat.value?.status === "completed") {
 			toast.add({
