@@ -190,9 +190,16 @@
 								ref="niiInput"
 								type="file"
 								accept=".nii"
-								class="text-sm file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer"
+								class="hidden"
 								@change="onNiiSelected"
 							>
+							<UButton
+								:label="selectedNii ? selectedNii.name : 'Choose NII file'"
+								icon="i-lucide-upload"
+								variant="soft"
+								size="sm"
+								@click="niiInput?.click()"
+							/>
 							<UButton
 								v-if="selectedNii"
 								label="Segment"
