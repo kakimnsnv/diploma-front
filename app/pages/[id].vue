@@ -74,7 +74,7 @@
 					/>
 					<div>
 						<p class="text-lg font-semibold text-error">
-							Ошибка обработки
+							Processing Error
 						</p>
 						<div
 							v-if="chat?.name"
@@ -96,12 +96,12 @@
 							v-else
 							class="mt-2 text-sm"
 						>
-							Не удалось выполнить сегментацию снимка.
+							Failed to segment the image.
 						</p>
 					</div>
 					<UButton
 						to="/"
-						label="Попробовать снова"
+						label="Try again"
 						icon="i-heroicons-arrow-path"
 						class="text-center"
 					/>
@@ -143,7 +143,7 @@
 										name="i-heroicons-magnifying-glass-plus"
 										class="w-10 h-10 drop-shadow-lg"
 									/>
-									<span class="text-sm font-medium drop-shadow-lg">Нажмите для просмотра</span>
+									<span class="text-sm font-medium drop-shadow-lg">Click to view</span>
 								</div>
 							</div>
 						</div>
@@ -287,7 +287,7 @@
 					</div>
 
 					<div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs select-none pointer-events-none">
-						Колесо мыши / pinch для масштаба · Перетащите для перемещения
+						Scroll / pinch to zoom · Drag to pan
 					</div>
 
 					<div
